@@ -17,6 +17,14 @@ const moods = [
   { emoji: "😐", label: "Neutral" },
 ];
 
+const moodThemes = {
+  Happy:    { bg: "#1a1200", grad: "linear-gradient(135deg, #7a4500, #b8860b)", accent: "#fda085", bubble: "#7a4500" },
+  Sad:      { bg: "#000d1a", grad: "linear-gradient(135deg, #001a33, #003366)", accent: "#5b8dee", bubble: "#003366" },
+  Stressed: { bg: "#1a0000", grad: "linear-gradient(135deg, #4a0000, #8b0000)", accent: "#ff6b6b", bubble: "#6b0000" },
+  Tired:    { bg: "#0d0019", grad: "linear-gradient(135deg, #1a0033, #4a1a6e)", accent: "#a29bfe", bubble: "#2d0055" },
+  Neutral:  { bg: "#0f0c29", grad: "linear-gradient(135deg, #0f0c29, #302b63)", accent: "#667eea", bubble: "#302b63" },
+};
+
 function App() {
   const [started, setStarted] = useState(false);
   const [page, setPage] = useState("chat");
@@ -30,9 +38,16 @@ function App() {
   const [showBreathe, setShowBreathe] = useState(false);
   const bottomRef = useRef(null);
 
+  const theme = moodThemes[mood] || moodThemes.Neutral;
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Apply theme to body background
+  useEffect(() => {
+    document.body.style.background = theme.grad;
+  }, [theme]);
 
   const handleMood = async (selectedMood) => {
     setMood(selectedMood);
@@ -84,10 +99,10 @@ function App() {
   if (!started) return <Welcome onStart={() => setStarted(true)} />;
 
   return (
-    <div className="app">
+    <div className="app" style={{ background: theme.bg }}>
       {showBreathe && <Breathe onClose={() => setShowBreathe(false)} />}
 
-      <div className="header">
+      <div className="header" style={{ background: theme.grad }}>
         <h1>🧠 EmpathAI</h1>
         <p>Your emotionally intelligent assistant</p>
         {mood && page === "chat" && (
@@ -99,7 +114,7 @@ function App() {
 
       <Affirmation mood={mood} />
 
-      <div className="nav">
+      <div className="nav" style={{ background: "rgba(0,0,0,0.3)" }}>
         <button className={page === "chat" ? "active" : ""} onClick={() => setPage("chat")}>💬 Chat</button>
         <button className={page === "dashboard" ? "active" : ""} onClick={() => setPage("dashboard")}>📊 Dashboard</button>
         <button className={page === "profile" ? "active" : ""} onClick={() => setPage("profile")}>👤 Profile</button>
@@ -111,7 +126,16 @@ function App() {
             {messages.map((msg, i) => (
               <div key={i} className={`message ${msg.from}`}>
                 {msg.from === "ai" && <span className="avatar">🤖</span>}
-                <div className="bubble">{msg.text}</div>
+                <div
+                  className="bubble"
+                  style={
+                    msg.from === "user"
+                      ? { background: theme.grad }
+                      : { background: "rgba(255,255,255,0.1)" }
+                  }
+                >
+                  {msg.text}
+                </div>
                 {msg.from === "user" && <span className="avatar">🧑</span>}
               </div>
             ))}
@@ -149,7 +173,11 @@ function App() {
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
               disabled={loading}
             />
-            <button onClick={handleSend} disabled={loading}>
+            <button
+              onClick={handleSend}
+              disabled={loading}
+              style={{ background: theme.grad }}
+            >
               {loading ? "..." : "Send"}
             </button>
           </div>
