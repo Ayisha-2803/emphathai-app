@@ -21,6 +21,7 @@ function Breathe({ onClose }) {
     }
     const timer = setTimeout(() => setCount((c) => c - 1), 1000);
     return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [count, phase]);
 
   return (
