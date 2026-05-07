@@ -41,9 +41,9 @@ function App() {
   const [moodHistory, setMoodHistory] = useState([]);
   const [showBreathe, setShowBreathe] = useState(false);
   const [showCrisis, setShowCrisis] = useState(false);
-  const [dwellTimes, setDwellTimes] = useState([]);
+  const dwellTimesRef = useRef([]);
   const handleDwell = useCallback((ms) => {
-    setDwellTimes((prev) => [...prev, ms]);
+    dwellTimesRef.current.push(ms);
   }, []);
   const [accessibility, setAccessibility] = useState({
     largeText: false,
