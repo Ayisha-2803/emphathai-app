@@ -13,7 +13,6 @@ const moodColors = {
 };
 
 function Dashboard({ moodHistory }) {
-  // Build chart data — count each mood
   const moodCounts = ["Happy", "Sad", "Stressed", "Tired", "Neutral"].map((mood) => ({
     mood,
     count: moodHistory.filter((m) => m.mood === mood).length,
@@ -57,10 +56,7 @@ function Dashboard({ moodHistory }) {
               />
               <Bar dataKey="count" radius={[6, 6, 0, 0]}>
                 {moodCounts.map((entry) => (
-                  <Cell
-                    key={entry.mood}
-                    fill={moodColors[entry.mood]}
-                  />
+                  <Cell key={entry.mood} fill={moodColors[entry.mood]} />
                 ))}
               </Bar>
             </BarChart>
@@ -111,6 +107,12 @@ function Dashboard({ moodHistory }) {
                 : "—"}
             </span>
             <span className="stat-label">Latest Mood</span>
+          </div>
+          <div className="stat">
+            <span className="stat-num">
+              {moodHistory.length > 0 ? `${moodHistory.length} 🔥` : "0"}
+            </span>
+            <span className="stat-label">Mood Streak</span>
           </div>
         </div>
       </div>

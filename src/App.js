@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import "./App.css";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import Dashboard from "./Dashboard";
@@ -9,7 +9,8 @@ import Welcome from "./Welcome";
 import Crisis from "./Crisis";
 import VoiceInput from "./VoiceInput";
 import Feedback from "./Feedback";
-
+import Suggestions from "./Suggestions";
+import DwellTracker from "./DwellTracker";
 const genAI = new GoogleGenerativeAI(process.env.REACT_APP_GEMINI_KEY);
 
 const moods = [
@@ -40,6 +41,10 @@ function App() {
   const [moodHistory, setMoodHistory] = useState([]);
   const [showBreathe, setShowBreathe] = useState(false);
   const [showCrisis, setShowCrisis] = useState(false);
+  const [dwellTimes, setDwellTimes] = useState([]);
+  const handleDwell = useCallback((ms) => {
+    setDwellTimes((prev) => [...prev, ms]);
+  }, []);
   const [accessibility, setAccessibility] = useState({
     largeText: false,
     calmMode: false,
@@ -83,10 +88,15 @@ function App() {
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
       const name = userName ? `The user's name is ${userName}.` : "";
-      const prompt = `You are EmpathAI, a warm and emotionally intelligent AI assistant.
+      const recentMoods = moodHistory.slice(-3).map(m => m.mood).join(", ");
+const moodContext = recentMoods ? `Their recent moods have been: ${recentMoods}.` : "";
+const prompt = `You are EmpathAI, a warm and emotionally intelligent AI assistant.
       ${name}
-      The user says: "${userMsg}". 
-      Respond with empathy in 2-3 short sentences. Be supportive and ask what they need help with.`;
+      The user says: "${userMsg}".
+      ${moodContext}
+      Respond with empathy in 2-3 short sentences.
+      If you notice a pattern in their moods, mention it warmly.
+      Be supportive and ask what they need help with.`;
       const result = await model.generateContent(prompt);
       setMessages((prev) => [...prev, { from: "ai", text: result.response.text(), showFeedback: true }]);
     } catch {
@@ -105,10 +115,16 @@ function App() {
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
       const name = userName ? `The user's name is ${userName}.` : "";
-      const prompt = `You are EmpathAI, a warm and emotionally intelligent AI assistant.
+      const recentMoods = moodHistory.slice(-3).map(m => m.mood).join(", ");
+const moodContext = recentMoods ? `The user's recent moods have been: ${recentMoods}.` : "";
+const prompt = `You are EmpathAI, a warm and emotionally intelligent AI assistant.
       ${name}
-      The user is feeling ${mood || "Neutral"} and says: "${userText}".
-      Respond with empathy and practical help in 2-3 short sentences.`;
+      The user is currently feeling ${mood || "Neutral"}.
+      ${moodContext}
+      The user says: "${userText}".
+      Respond with empathy and practical help in 2-3 short sentences.
+      If their mood has been consistently negative, acknowledge it warmly.
+      Adapt your tone based on their emotional history.`;
       const result = await model.generateContent(prompt);
       setMessages((prev) => [...prev, { from: "ai", text: result.response.text(), showFeedback: true }]);
     } catch {
@@ -182,9 +198,14 @@ function App() {
                 </div>
               </div>
             )}
+            <DwellTracker
+              messageCount={messages.length}
+              onDwell={handleDwell}
+            />
             <div ref={bottomRef} />
           </div>
 
+          <Suggestions mood={mood} theme={theme} />
           {!mood && (
             <div className="mood-selector">
               <p>How are you feeling right now?</p>
