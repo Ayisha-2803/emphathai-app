@@ -6,6 +6,9 @@ import Profile from "./Profile";
 import Breathe from "./Breathe";
 import Affirmation from "./Affirmation";
 import Welcome from "./Welcome";
+import Crisis from "./Crisis";
+import VoiceInput from "./VoiceInput";
+import Feedback from "./Feedback";
 
 const genAI = new GoogleGenerativeAI(process.env.REACT_APP_GEMINI_KEY);
 
@@ -18,11 +21,11 @@ const moods = [
 ];
 
 const moodThemes = {
-  Happy:    { bg: "#1a1200", grad: "linear-gradient(135deg, #7a4500, #b8860b)", accent: "#fda085", bubble: "#7a4500" },
-  Sad:      { bg: "#000d1a", grad: "linear-gradient(135deg, #001a33, #003366)", accent: "#5b8dee", bubble: "#003366" },
-  Stressed: { bg: "#1a0000", grad: "linear-gradient(135deg, #4a0000, #8b0000)", accent: "#ff6b6b", bubble: "#6b0000" },
-  Tired:    { bg: "#0d0019", grad: "linear-gradient(135deg, #1a0033, #4a1a6e)", accent: "#a29bfe", bubble: "#2d0055" },
-  Neutral:  { bg: "#0f0c29", grad: "linear-gradient(135deg, #0f0c29, #302b63)", accent: "#667eea", bubble: "#302b63" },
+  Happy:    { bg: "#1a1200", grad: "linear-gradient(135deg, #7a4500, #b8860b)", accent: "#fda085" },
+  Sad:      { bg: "#000d1a", grad: "linear-gradient(135deg, #001a33, #003366)", accent: "#5b8dee" },
+  Stressed: { bg: "#1a0000", grad: "linear-gradient(135deg, #4a0000, #8b0000)", accent: "#ff6b6b" },
+  Tired:    { bg: "#0d0019", grad: "linear-gradient(135deg, #1a0033, #4a1a6e)", accent: "#a29bfe" },
+  Neutral:  { bg: "#0f0c29", grad: "linear-gradient(135deg, #0f0c29, #302b63)", accent: "#667eea" },
 };
 
 function App() {
@@ -36,18 +39,31 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [moodHistory, setMoodHistory] = useState([]);
   const [showBreathe, setShowBreathe] = useState(false);
+  const [showCrisis, setShowCrisis] = useState(false);
+  const [accessibility, setAccessibility] = useState({
+    largeText: false,
+    calmMode: false,
+    highContrast: false,
+    reminders: false,
+  });
   const bottomRef = useRef(null);
-
   const theme = moodThemes[mood] || moodThemes.Neutral;
+  const userName = localStorage.getItem("empathaiName") || "";
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Apply theme to body background
   useEffect(() => {
     document.body.style.background = theme.grad;
   }, [theme]);
+
+  // Apply accessibility
+  useEffect(() => {
+    document.body.style.fontSize = accessibility.largeText ? "18px" : "16px";
+    document.body.style.filter = accessibility.highContrast ? "contrast(1.5)" : "none";
+    document.body.style.animation = accessibility.calmMode ? "none" : "";
+  }, [accessibility]);
 
   const handleMood = async (selectedMood) => {
     setMood(selectedMood);
@@ -60,18 +76,21 @@ function App() {
 
     if (selectedMood === "Stressed" || selectedMood === "Sad") {
       setTimeout(() => setShowBreathe(true), 1000);
+      setTimeout(() => setShowCrisis(true), 500);
     }
 
     setLoading(true);
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const prompt = `You are EmpathAI, a warm and emotionally intelligent AI assistant. 
+      const name = userName ? `The user's name is ${userName}.` : "";
+      const prompt = `You are EmpathAI, a warm and emotionally intelligent AI assistant.
+      ${name}
       The user says: "${userMsg}". 
       Respond with empathy in 2-3 short sentences. Be supportive and ask what they need help with.`;
       const result = await model.generateContent(prompt);
-      setMessages((prev) => [...prev, { from: "ai", text: result.response.text() }]);
+      setMessages((prev) => [...prev, { from: "ai", text: result.response.text(), showFeedback: true }]);
     } catch {
-      setMessages((prev) => [...prev, { from: "ai", text: "I'm here for you 💙 Tell me more." }]);
+      setMessages((prev) => [...prev, { from: "ai", text: "I'm here for you 💙 Tell me more.", showFeedback: false }]);
     }
     setLoading(false);
   };
@@ -85,13 +104,15 @@ function App() {
 
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const name = userName ? `The user's name is ${userName}.` : "";
       const prompt = `You are EmpathAI, a warm and emotionally intelligent AI assistant.
+      ${name}
       The user is feeling ${mood || "Neutral"} and says: "${userText}".
       Respond with empathy and practical help in 2-3 short sentences.`;
       const result = await model.generateContent(prompt);
-      setMessages((prev) => [...prev, { from: "ai", text: result.response.text() }]);
+      setMessages((prev) => [...prev, { from: "ai", text: result.response.text(), showFeedback: true }]);
     } catch {
-      setMessages((prev) => [...prev, { from: "ai", text: "I'm here for you 💙 Please keep sharing." }]);
+      setMessages((prev) => [...prev, { from: "ai", text: "I'm here for you 💙 Please keep sharing.", showFeedback: false }]);
     }
     setLoading(false);
   };
@@ -99,12 +120,19 @@ function App() {
   if (!started) return <Welcome onStart={() => setStarted(true)} />;
 
   return (
-    <div className="app" style={{ background: theme.bg }}>
+    <div
+      className="app"
+      style={{
+        background: theme.bg,
+        fontSize: accessibility.largeText ? "17px" : undefined,
+      }}
+    >
       {showBreathe && <Breathe onClose={() => setShowBreathe(false)} />}
+      {showCrisis && <Crisis onClose={() => setShowCrisis(false)} />}
 
       <div className="header" style={{ background: theme.grad }}>
         <h1>🧠 EmpathAI</h1>
-        <p>Your emotionally intelligent assistant</p>
+        <p>{userName ? `Hello, ${userName} 👋` : "Your emotionally intelligent assistant"}</p>
         {mood && page === "chat" && (
           <div className="mood-badge">
             {moods.find((m) => m.label === mood)?.emoji} {mood}
@@ -124,19 +152,26 @@ function App() {
         <>
           <div className="chat-box">
             {messages.map((msg, i) => (
-              <div key={i} className={`message ${msg.from}`}>
-                {msg.from === "ai" && <span className="avatar">🤖</span>}
-                <div
-                  className="bubble"
-                  style={
-                    msg.from === "user"
-                      ? { background: theme.grad }
-                      : { background: "rgba(255,255,255,0.1)" }
-                  }
-                >
-                  {msg.text}
+              <div key={i}>
+                <div className={`message ${msg.from}`}>
+                  {msg.from === "ai" && <span className="avatar">🤖</span>}
+                  <div
+                    className="bubble"
+                    style={
+                      msg.from === "user"
+                        ? { background: theme.grad }
+                        : { background: "rgba(255,255,255,0.1)" }
+                    }
+                  >
+                    {msg.text}
+                  </div>
+                  {msg.from === "user" && <span className="avatar">🧑</span>}
                 </div>
-                {msg.from === "user" && <span className="avatar">🧑</span>}
+                {msg.from === "ai" && msg.showFeedback && (
+                  <div style={{ paddingLeft: "40px", marginTop: "-6px", marginBottom: "6px" }}>
+                    <Feedback onRate={(r) => console.log("Rating:", r)} />
+                  </div>
+                )}
               </div>
             ))}
             {loading && (
@@ -167,12 +202,13 @@ function App() {
           <div className="input-area">
             <input
               type="text"
-              placeholder="Type how you feel or what you need..."
+              placeholder="Type or speak how you feel..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
               disabled={loading}
             />
+            <VoiceInput onResult={(text) => setInput(text)} />
             <button
               onClick={handleSend}
               disabled={loading}
@@ -185,7 +221,12 @@ function App() {
       )}
 
       {page === "dashboard" && <Dashboard moodHistory={moodHistory} />}
-      {page === "profile" && <Profile />}
+      {page === "profile" && (
+        <Profile
+          accessibility={accessibility}
+          setAccessibility={setAccessibility}
+        />
+      )}
     </div>
   );
 }
