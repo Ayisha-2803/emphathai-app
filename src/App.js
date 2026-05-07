@@ -81,7 +81,7 @@ function App() {
 
     setLoading(true);
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
       const name = userName ? `The user's name is ${userName}.` : "";
       const prompt = `You are EmpathAI, a warm and emotionally intelligent AI assistant.
       ${name}
@@ -103,7 +103,7 @@ function App() {
     setLoading(true);
 
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
       const name = userName ? `The user's name is ${userName}.` : "";
       const prompt = `You are EmpathAI, a warm and emotionally intelligent AI assistant.
       ${name}
