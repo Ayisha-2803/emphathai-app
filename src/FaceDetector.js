@@ -1,5 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
-import * as faceapi from "face-api.js";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 
 const emotionMap = {
   happy: "Happy",
@@ -15,58 +14,48 @@ function FaceDetector({ onEmotionDetected, active }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const intervalRef = useRef(null);
+  const faceApiRef = useRef(null);
   const [status, setStatus] = useState("idle");
   const [detected, setDetected] = useState(null);
 
-  useEffect(() => {
-    if (active) {
-      loadModels();
-    } else {
-      stopEverything();
-    }
-
-    return () => stopEverything();
-  }, [active]);
-
-  const stopEverything = () => {
-    // Stop interval
+  const stopEverything = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-    // Stop camera stream
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => {
-        track.stop();
-      });
+      streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
-    // Clear video
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
     setStatus("idle");
     setDetected(null);
-  };
+  }, []);
 
-  const loadModels = async () => {
+  const detectEmotion = useCallback(async () => {
+    if (!videoRef.current || !streamRef.current || !faceApiRef.current) return;
     try {
-      setStatus("loading");
-      await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri("/models"),
-        faceapi.nets.faceExpressionNet.loadFromUri("/models"),
-      ]);
-      setStatus("ready");
-      startCamera();
-    } catch (e) {
-      setStatus("error");
-    }
-  };
+      const faceapi = faceApiRef.current;
+      const result = await faceapi
+        .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
+        .withFaceExpressions();
+      if (result) {
+        const dominant = Object.entries(result.expressions).reduce((a, b) =>
+          a[1] > b[1] ? a : b
+        )[0];
+        const mappedMood = emotionMap[dominant] || "Neutral";
+        setDetected(mappedMood);
+        onEmotionDetected(mappedMood);
+      }
+    } catch {}
+  }, [onEmotionDetected]);
 
-  const startCamera = async () => {
+  const startCamera = useCallback(async (faceapi) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { width: 320, height: 240 } 
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 320, height: 240 }
       });
       streamRef.current = stream;
       if (videoRef.current) {
@@ -77,28 +66,33 @@ function FaceDetector({ onEmotionDetected, active }) {
     } catch {
       setStatus("denied");
     }
-  };
+  }, [detectEmotion]);
 
-  const detectEmotion = async () => {
-    if (!videoRef.current || !streamRef.current) return;
+  const loadModels = useCallback(async () => {
     try {
-      const result = await faceapi
-        .detectSingleFace(
-          videoRef.current,
-          new faceapi.TinyFaceDetectorOptions()
-        )
-        .withFaceExpressions();
+      setStatus("loading");
+      const faceapi = await import("face-api.js");
+      faceApiRef.current = faceapi;
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri("/models"),
+        faceapi.nets.faceExpressionNet.loadFromUri("/models"),
+      ]);
+      setStatus("ready");
+      await startCamera(faceapi);
+    } catch (e) {
+      console.error(e);
+      setStatus("error");
+    }
+  }, [startCamera]);
 
-      if (result) {
-        const dominant = Object.entries(result.expressions).reduce((a, b) =>
-          a[1] > b[1] ? a : b
-        )[0];
-        const mappedMood = emotionMap[dominant] || "Neutral";
-        setDetected(mappedMood);
-        onEmotionDetected(mappedMood);
-      }
-    } catch {}
-  };
+  useEffect(() => {
+    if (active) {
+      loadModels();
+    } else {
+      stopEverything();
+    }
+    return () => stopEverything();
+  }, [active, loadModels, stopEverything]);
 
   if (!active) return null;
 
@@ -115,10 +109,7 @@ function FaceDetector({ onEmotionDetected, active }) {
       <div className="face-status">
         {status === "loading" && <span>📷 Loading face detection...</span>}
         {status === "ready" && (
-          <span>
-            📷 Camera active
-            {detected && ` — detected: ${detected}`}
-          </span>
+          <span>📷 Camera active {detected && `— detected: ${detected}`}</span>
         )}
         {status === "denied" && <span>📷 Camera access denied</span>}
         {status === "error" && <span>📷 Face detection unavailable</span>}
