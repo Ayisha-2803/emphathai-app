@@ -914,3 +914,38 @@ body {
   text-align: center;
   margin-top: 8px;
 }
+.header-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.camera-toggle {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 20px;
+  padding: 4px 12px;
+  color: white;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.camera-toggle.active {
+  background: rgba(255,100,100,0.3);
+  border-color: #ff6b6b;
+}
+
+.face-detector {
+  padding: 6px 16px;
+  background: rgba(0,0,0,0.2);
+}
+
+.face-status {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  text-align: center;
+}

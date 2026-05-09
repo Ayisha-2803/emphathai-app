@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import "./App.css";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
 import Dashboard from "./Dashboard";
 import Profile from "./Profile";
 import Breathe from "./Breathe";
@@ -11,7 +11,12 @@ import VoiceInput from "./VoiceInput";
 import Feedback from "./Feedback";
 import Suggestions from "./Suggestions";
 import DwellTracker from "./DwellTracker";
-const genAI = new GoogleGenerativeAI(process.env.REACT_APP_GEMINI_KEY);
+import FaceDetector from "./FaceDetector";
+
+const groq = new Groq({
+  apiKey: process.env.REACT_APP_GROQ_KEY,
+  dangerouslyAllowBrowser: true
+});
 
 const moods = [
   { emoji: "😊", label: "Happy" },
@@ -41,19 +46,22 @@ function App() {
   const [moodHistory, setMoodHistory] = useState([]);
   const [showBreathe, setShowBreathe] = useState(false);
   const [showCrisis, setShowCrisis] = useState(false);
-  const dwellTimesRef = useRef([]);
-  const handleDwell = useCallback((ms) => {
-    dwellTimesRef.current.push(ms);
-  }, []);
+  const [faceDetectionActive, setFaceDetectionActive] = useState(false);
   const [accessibility, setAccessibility] = useState({
     largeText: false,
     calmMode: false,
     highContrast: false,
     reminders: false,
   });
+
   const bottomRef = useRef(null);
+  const dwellTimesRef = useRef([]);
   const theme = moodThemes[mood] || moodThemes.Neutral;
   const userName = localStorage.getItem("empathaiName") || "";
+
+  const handleDwell = useCallback((ms) => {
+    dwellTimesRef.current.push(ms);
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -63,11 +71,9 @@ function App() {
     document.body.style.background = theme.grad;
   }, [theme]);
 
-  // Apply accessibility
   useEffect(() => {
     document.body.style.fontSize = accessibility.largeText ? "18px" : "16px";
     document.body.style.filter = accessibility.highContrast ? "contrast(1.5)" : "none";
-    document.body.style.animation = accessibility.calmMode ? "none" : "";
   }, [accessibility]);
 
   const handleMood = async (selectedMood) => {
@@ -86,21 +92,33 @@ function App() {
 
     setLoading(true);
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-      const name = userName ? `The user's name is ${userName}.` : "";
       const recentMoods = moodHistory.slice(-3).map(m => m.mood).join(", ");
-const moodContext = recentMoods ? `Their recent moods have been: ${recentMoods}.` : "";
-const prompt = `You are EmpathAI, a warm and emotionally intelligent AI assistant.
+      const moodContext = recentMoods ? `Their recent moods have been: ${recentMoods}.` : "";
+      const name = userName ? `The user's name is ${userName}.` : "";
+      const prompt = `You are EmpathAI, a warm and emotionally intelligent AI assistant.
       ${name}
       The user says: "${userMsg}".
       ${moodContext}
       Respond with empathy in 2-3 short sentences.
       If you notice a pattern in their moods, mention it warmly.
       Be supportive and ask what they need help with.`;
-      const result = await model.generateContent(prompt);
-      setMessages((prev) => [...prev, { from: "ai", text: result.response.text(), showFeedback: true }]);
-    } catch {
-      setMessages((prev) => [...prev, { from: "ai", text: "I'm here for you 💙 Tell me more.", showFeedback: false }]);
+
+      const result = await groq.chat.completions.create({
+        messages: [{ role: "user", content: prompt }],
+        model: "llama-3.3-70b-versatile",
+      });
+      setMessages((prev) => [...prev, { 
+        from: "ai", 
+        text: result.choices[0].message.content, 
+        showFeedback: true 
+      }]);
+    } catch (e) {
+      console.error(e);
+      setMessages((prev) => [...prev, { 
+        from: "ai", 
+        text: "I'm here for you 💙 Tell me more.", 
+        showFeedback: false 
+      }]);
     }
     setLoading(false);
   };
@@ -113,22 +131,33 @@ const prompt = `You are EmpathAI, a warm and emotionally intelligent AI assistan
     setLoading(true);
 
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-      const name = userName ? `The user's name is ${userName}.` : "";
       const recentMoods = moodHistory.slice(-3).map(m => m.mood).join(", ");
-const moodContext = recentMoods ? `The user's recent moods have been: ${recentMoods}.` : "";
-const prompt = `You are EmpathAI, a warm and emotionally intelligent AI assistant.
+      const moodContext = recentMoods ? `The user's recent moods have been: ${recentMoods}.` : "";
+      const name = userName ? `The user's name is ${userName}.` : "";
+      const prompt = `You are EmpathAI, a warm and emotionally intelligent AI assistant.
       ${name}
       The user is currently feeling ${mood || "Neutral"}.
       ${moodContext}
       The user says: "${userText}".
       Respond with empathy and practical help in 2-3 short sentences.
-      If their mood has been consistently negative, acknowledge it warmly.
-      Adapt your tone based on their emotional history.`;
-      const result = await model.generateContent(prompt);
-      setMessages((prev) => [...prev, { from: "ai", text: result.response.text(), showFeedback: true }]);
-    } catch {
-      setMessages((prev) => [...prev, { from: "ai", text: "I'm here for you 💙 Please keep sharing.", showFeedback: false }]);
+      Adapt your tone based on their emotional state and history.`;
+
+      const result = await groq.chat.completions.create({
+        messages: [{ role: "user", content: prompt }],
+        model: "llama-3.3-70b-versatile",
+      });
+      setMessages((prev) => [...prev, { 
+        from: "ai", 
+        text: result.choices[0].message.content, 
+        showFeedback: true 
+      }]);
+    } catch (e) {
+      console.error(e);
+      setMessages((prev) => [...prev, { 
+        from: "ai", 
+        text: "I'm here for you 💙 Please keep sharing.", 
+        showFeedback: false 
+      }]);
     }
     setLoading(false);
   };
@@ -136,25 +165,45 @@ const prompt = `You are EmpathAI, a warm and emotionally intelligent AI assistan
   if (!started) return <Welcome onStart={() => setStarted(true)} />;
 
   return (
-    <div
-      className="app"
-      style={{
-        background: theme.bg,
-        fontSize: accessibility.largeText ? "17px" : undefined,
-      }}
-    >
+    <div className="app" style={{
+      background: theme.bg,
+      fontSize: accessibility.largeText ? "17px" : undefined,
+    }}>
       {showBreathe && <Breathe onClose={() => setShowBreathe(false)} />}
       {showCrisis && <Crisis onClose={() => setShowCrisis(false)} />}
 
       <div className="header" style={{ background: theme.grad }}>
         <h1>🧠 EmpathAI</h1>
         <p>{userName ? `Hello, ${userName} 👋` : "Your emotionally intelligent assistant"}</p>
-        {mood && page === "chat" && (
-          <div className="mood-badge">
-            {moods.find((m) => m.label === mood)?.emoji} {mood}
-          </div>
-        )}
+        <div className="header-controls">
+          {mood && page === "chat" && (
+            <div className="mood-badge">
+              {moods.find((m) => m.label === mood)?.emoji} {mood}
+            </div>
+          )}
+          <button
+            className={`camera-toggle ${faceDetectionActive ? "active" : ""}`}
+            onClick={() => setFaceDetectionActive(!faceDetectionActive)}
+            title="Toggle face emotion detection"
+          >
+            {faceDetectionActive ? "📷 On" : "📷 Off"}
+          </button>
+        </div>
       </div>
+
+      <FaceDetector
+        active={faceDetectionActive}
+        onEmotionDetected={(detectedMood) => {
+          if (!mood && !loading) {
+            setMood(detectedMood);
+            setMoodHistory((prev) => [...prev, {
+              mood: detectedMood,
+              emoji: moods.find((m) => m.label === detectedMood)?.emoji || "😐",
+              time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+            }]);
+          }
+        }}
+      />
 
       <Affirmation mood={mood} />
 
@@ -206,6 +255,7 @@ const prompt = `You are EmpathAI, a warm and emotionally intelligent AI assistan
           </div>
 
           <Suggestions mood={mood} theme={theme} />
+
           {!mood && (
             <div className="mood-selector">
               <p>How are you feeling right now?</p>
