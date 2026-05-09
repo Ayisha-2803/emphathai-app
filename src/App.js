@@ -195,12 +195,7 @@ function App() {
         active={faceDetectionActive}
         onEmotionDetected={(detectedMood) => {
           if (!mood && !loading) {
-            setMood(detectedMood);
-            setMoodHistory((prev) => [...prev, {
-              mood: detectedMood,
-              emoji: moods.find((m) => m.label === detectedMood)?.emoji || "😐",
-              time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-            }]);
+            handleMood(detectedMood);
           }
         }}
       />
