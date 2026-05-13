@@ -4,7 +4,6 @@ import Groq from "groq-sdk";
 import Dashboard from "./Dashboard";
 import Profile from "./Profile";
 import Breathe from "./Breathe";
-import Affirmation from "./Affirmation";
 import Welcome from "./Welcome";
 import Crisis from "./Crisis";
 import VoiceInput from "./VoiceInput";
@@ -13,7 +12,7 @@ import Suggestions from "./Suggestions";
 import DwellTracker from "./DwellTracker";
 import FaceDetector from "./FaceDetector";
 import useWeatherContext from "./WeatherContext";
-import { motion, AnimatePresence } from "framer-motion";
+
 
 const groq = new Groq({
   apiKey: process.env.REACT_APP_GROQ_KEY,
@@ -93,7 +92,6 @@ function App() {
 
   const bottomRef = useRef(null);
   const dwellTimesRef = useRef([]);
-  const theme = moodThemes[mood] || moodThemes.Neutral;
   const userName = localStorage.getItem("empathaiName") || "";
   const weatherCtx = useWeatherContext();
 
