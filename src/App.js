@@ -93,7 +93,6 @@ function App() {
   const bottomRef = useRef(null);
   const dwellTimesRef = useRef([]);
   const userName = localStorage.getItem("empathaiName") || "";
-  const theme = moodThemes[mood] || moodThemes.Neutral;
   const weatherCtx = useWeatherContext();
 
   const handleDwell = useCallback((ms) => {
@@ -455,7 +454,7 @@ RULES:
               <div ref={bottomRef} />
             </div>
 
-            <Suggestions mood={mood} theme={theme} />
+            <Suggestions mood={mood} />
 
             {!mood && (
               <div className="mood-selector">

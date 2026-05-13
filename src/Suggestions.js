@@ -33,7 +33,7 @@ const moodSuggestions = {
   ],
 };
 
-function Suggestions({ mood, theme }) {
+function Suggestions({ mood }) {
   const [dismissed, setDismissed] = useState(false);
   const [completed, setCompleted] = useState([]);
 
