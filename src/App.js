@@ -93,6 +93,7 @@ function App() {
   const bottomRef = useRef(null);
   const dwellTimesRef = useRef([]);
   const userName = localStorage.getItem("empathaiName") || "";
+  const theme = moodThemes[mood] || moodThemes.Neutral;
   const weatherCtx = useWeatherContext();
 
   const handleDwell = useCallback((ms) => {
