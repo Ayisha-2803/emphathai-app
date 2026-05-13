@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import useWeatherContext from "./WeatherContext";
 
 const affirmations = {
   Happy: [
@@ -30,6 +31,7 @@ const affirmations = {
 
 function Affirmation({ mood }) {
   const [text, setText] = useState("");
+  const weatherCtx = useWeatherContext();
 
   useEffect(() => {
     if (mood) {
@@ -38,11 +40,18 @@ function Affirmation({ mood }) {
     }
   }, [mood]);
 
-  if (!mood || !text) return null;
-
   return (
-    <div className="affirmation-bar">
-      <p>{text}</p>
+    <div>
+      {weatherCtx.loaded && weatherCtx.suggestion && (
+        <div className="weather-bar">
+          <p>{weatherCtx.suggestion} • {weatherCtx.timeOfDay && `Good ${weatherCtx.timeOfDay}!`}</p>
+        </div>
+      )}
+      {mood && text && (
+        <div className="affirmation-bar">
+          <p>{text}</p>
+        </div>
+      )}
     </div>
   );
 }
